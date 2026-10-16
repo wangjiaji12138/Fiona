@@ -1,0 +1,2 @@
+-e git+https://github.com/wangjiaji12138/Fiona.git@6e653aba5bb9c9e9ddbf6b4755f5f9e7b713a504#egg=fiona_rag
+pymupdf==1.28.2
