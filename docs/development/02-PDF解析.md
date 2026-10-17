@@ -1,8 +1,8 @@
 # 2. PDF 解析：逐页提取、清洗与 JSONL 输出
 
-更新日期：2026-10-15。适用环境：Linux、Bash、Conda `fiona`。本教程整理已经实现的通用 PDF 解析能力；当前项目定位为 Fiona（曌），面向时空预测论文。整体进度与新的论文准备任务查 [README](../../README.md)。
+更新日期：2026-10-17。适用环境：Linux、Bash、Conda `fiona`。本教程整理已经实现的通用 PDF 解析能力；当前项目定位为 Fiona（曌），面向时空预测论文。整体进度与新的论文准备任务查 [README](../../README.md)。
 
-教程保留已有招商银行年报作为**历史解析回归样例**，因为文件和输出均已存在，方便核对实现；它不属于新的论文知识库。新论文尚未通过本教程验证，双栏、公式与实验表格需要重新抽查。不要把旧样例的成功视为论文解析质量已经达标。
+本教程使用 `paper_example_v1` 作为论文 ID 占位示例，不表示文件已经存在或通过验证。执行前需选定论文、保存 PDF 并登记映射；页数、关键词和目标页以实际论文为准。
 
 ## 1. 本次要完成什么
 
@@ -10,9 +10,9 @@
 
 |对象|本教程样例|
 |---|---|
-|输入映射|`configs/pdf_files.json` 中的 `cmb_2024_annual`|
-|原始 PDF|`data/raw/招商银行2024年年度报告.pdf`|
-|正式输出|`data/parsed/cmb_2024_annual.jsonl`|
+|输入映射|`configs/pdf_files.json` 中的 `paper_example_v1`|
+|原始 PDF|`data/raw/paper_example_v1.pdf`|
+|正式输出|`data/parsed/paper_example_v1.jsonl`|
 |完成标志|能逐行读取输出、核对页面数量与物理页序，并在原 PDF 找到对应文字|
 |能力范围|提取与基础清洗；暂不执行 OCR、结构恢复、切块、索引或回答|
 
@@ -20,7 +20,7 @@
 
 ## 2. 先理解三个概念
 
-**物理页序：** PDF 查看器从文件第一页开始计数的位置，程序输出从 1 开始。PDF 内印刷的页码可能不同；例如本样例 PDF 第 14 页印刷页码为 13。引用打开页面时使用物理页序，不能把正文第一页重新编号为 1。
+**物理页序：** PDF 查看器从文件第一页开始计数的位置，程序输出从 1 开始。PDF 内印刷的页码可能不同；例如封面未编号时，物理页序与正文页码可能不同。引用打开页面时使用物理页序，不能把正文第一页重新编号为 1。
 
 **JSONL：** 一行一个 JSON 对象，适合逐行处理。正文中的换行在文件内编码为 `\n`，不会把一页拆成多条记录；`json.loads()` 还原后才重新显示为多行文字。
 
@@ -41,7 +41,7 @@ python -m pip check
 
 成功标志：解释器位于 `fiona` 环境，项目路径指向本仓库的 `src/fiona/__init__.py`，PyMuPDF 可以导入，依赖检查没有冲突。本功能复用已声明的 PyMuPDF，无需新增依赖。
 
-检查样例映射与输入文件：
+先将选定论文保存为 `data/raw/paper_example_v1.pdf`，在 `configs/pdf_files.json` 中登记 `"paper_example_v1": "paper_example_v1.pdf"`（或统一替换为实际 ID 和文件名），再检查映射与输入文件：
 
 ```bash
 python - <<'PY'
@@ -49,7 +49,7 @@ import json
 from pathlib import Path
 
 mapping = json.loads(Path("configs/pdf_files.json").read_text(encoding="utf-8"))
-doc_id = "cmb_2024_annual"
+doc_id = "paper_example_v1"
 pdf_path = Path("data/raw") / mapping[doc_id]
 print("文档 ID：", doc_id)
 print("PDF 路径：", pdf_path)
@@ -120,10 +120,10 @@ PyMuPDF 以 0 开始访问页面，返回对象的 `page_number` 使用 `index +
 ```bash
 python scripts/parse_pdf.py --help
 FIONA_PDF_CHECK_DIR="$(mktemp -d /tmp/fiona-pdf-check.XXXXXX)"
-python scripts/parse_pdf.py --doc-id cmb_2024_annual --keyword 营业收入 --output-dir "$FIONA_PDF_CHECK_DIR"
+python scripts/parse_pdf.py --doc-id paper_example_v1 --keyword forecasting --output-dir "$FIONA_PDF_CHECK_DIR"
 ```
 
-这会生成临时目录中的 `cmb_2024_annual.jsonl`，不改写正式解析产物。预期摘要为 362 页、有文字 362 页、无文字 0 页，19 页包含关键词。终端只预览前 3 个匹配页面片段，输出文件仍包含全部页面。
+这会生成临时目录中的 `paper_example_v1.jsonl`，不改写正式解析产物。摘要显示实际总页数、有文字页数、无文字页数与关键词命中页数；这些数值需与所选论文核对。终端只预览前 3 个匹配页面片段，输出文件仍包含全部页面。
 
 |参数|作用与注意点|
 |---|---|
@@ -135,18 +135,18 @@ python scripts/parse_pdf.py --doc-id cmb_2024_annual --keyword 营业收入 --ou
 以下命令用于正式重跑，会替换对应同名 JSONL：
 
 ```bash
-python scripts/parse_pdf.py --doc-id cmb_2024_annual cmb_2023_annual
+python scripts/parse_pdf.py --doc-id paper_example_v1
 python scripts/parse_pdf.py
 ```
 
-当前配置仍包含旧金融资料，全量运行不代表已处理新的时空预测论文。执行后紧接着运行 `echo $?` 可查看退出码：0 表示所选文件均获得可用文字，1 表示有文件处理失败，2 表示配置或参数错误。部分页面无文字不会单独让整个文件失败，但需要后续检查。
+全量运行前须确认配置内所有文件均属于本次处理范围。执行后紧接着运行 `echo $?` 可查看退出码：0 表示所选文件均获得可用文字，1 表示有文件处理失败，2 表示配置或参数错误。部分页面无文字不会单独让整个文件失败，但需要后续检查。
 
 ## 7. 查看页面记录与核对原文
 
-先查看临时输出的第 14 页：
+先查看临时输出的第 1 页；检查实验表时，将代码中的页码改为实际目标页：
 
 ```bash
-python - "$FIONA_PDF_CHECK_DIR/cmb_2024_annual.jsonl" <<'PY'
+python - "$FIONA_PDF_CHECK_DIR/paper_example_v1.jsonl" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -154,68 +154,57 @@ from pathlib import Path
 with Path(sys.argv[1]).open(encoding="utf-8") as source:
     for line in source:
         page = json.loads(line)
-        if page["page_number"] == 14:
+        if page["page_number"] == 1:
             print("状态：", page["status"])
             print(page["text"])
             break
     else:
-        raise ValueError("未找到 PDF 第 14 页")
+        raise ValueError("未找到 PDF 第 1 页")
 PY
 ```
 
-历史样例的核对目标是该页的一张财务表：文本中应能一起找到年份列头、单位、指标行与数值。这个例子的意义是检查表格必要限定是否还在；并不将该问题继续作为新论文知识库的验收题。
-
-打开原 PDF 的物理第 14 页，检查数值所在列和单位，不能只搜索到数字就认定正确。此前样例记录核对的是 2024 年“营业收入”337,488，单位为人民币百万元，口径为本集团；本次自动检查只检查该字符串存在，没有重新人工核对原图。
+打开原 PDF 的对应物理页，对照提取文字检查阅读顺序、表头、单位和数值对应关系；关键词命中不能代替原文核验。
 
 新论文抽查至少覆盖方法正文与一张目标实验表：确认双栏顺序、方法名、数据集、指标、预测步长和脚注对应关系。对公式记录“可读/需要增强”，不根据乱码猜原式。缺失或错误页记下物理位置，作为后续结构增强的输入。
 
 ## 8. 可复现验证与当次记录
 
-以下程序自己创建并清理临时目录，调用真实批处理脚本后核对页面结构，与现有正式样例逐字节比较。它不会替换正式输出；只用于本仓库仍保留此历史样例时的回归检查。
+以下程序在完成论文登记后执行，使用临时目录调用批处理，再核对页数、连续物理页码和页面状态。它不会替换正式输出。检查通过只代表页面结构一致，论文内容质量仍需按第 7 节人工核对。
 
 **操作位置：已激活 `fiona` 的服务器终端，项目根目录。**
 
 ```bash
-python - <<'PY'
+python - <<'PYTHON'
 import json
 import subprocess
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import pymupdf
 
+mapping = json.loads(Path("configs/pdf_files.json").read_text(encoding="utf-8"))
+doc_id = "paper_example_v1"  # 替换为已登记的实际 ID
+with pymupdf.open(Path("data/raw") / mapping[doc_id]) as document:
+    expected_pages = len(document)
 with TemporaryDirectory(prefix="fiona-docs-parse-") as output_dir:
-    command = [
-        sys.executable, "scripts/parse_pdf.py",
-        "--doc-id", "cmb_2024_annual", "--keyword", "营业收入",
+    subprocess.run([
+        sys.executable, "scripts/parse_pdf.py", "--doc-id", doc_id,
         "--output-dir", output_dir,
-    ]
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
-    parsed = Path(output_dir) / "cmb_2024_annual.jsonl"
+    ], check=True)
+    parsed = Path(output_dir) / f"{doc_id}.jsonl"
     pages = [json.loads(line) for line in parsed.read_text(encoding="utf-8").splitlines()]
-    assert len(pages) == 362
-    assert [p["page_number"] for p in pages] == list(range(1, 363))
-    assert all(p["doc_id"] == "cmb_2024_annual" for p in pages)
-    assert all(p["status"] == "extracted" and p["text"].strip() for p in pages)
-    assert sum("营业收入" in p["text"] for p in pages) == 19
-    assert "337,488" in pages[13]["text"]
-    assert parsed.read_bytes() == Path("data/parsed/cmb_2024_annual.jsonl").read_bytes()
-    print("PASS：362 页、连续页码、非空状态、关键词及输出一致性检查通过。")
-PY
+    assert len(pages) == expected_pages
+    assert [p["page_number"] for p in pages] == list(range(1, expected_pages + 1))
+    assert all(p["doc_id"] == doc_id for p in pages)
+    for page in pages:
+        assert page["status"] == ("extracted" if page["text"].strip() else "empty")
+        if page["status"] == "empty":
+            assert page.get("reason")
+    print(f"PASS：{expected_pages} 页，页码、文档 ID 与页面状态一致。")
+PYTHON
 ```
 
-与正式输出不一致时先检查输入文件、PyMuPDF 版本与规范化规则是否变化；不能直接覆盖参考文件让检查通过。上述字符串检查只覆盖数据流和回归行为，不证明原文含义正确。
-
-2026-10-15 本次整理的实际记录：
-
-|项目|结果与范围|
-|---|---|
-|解释器与库|Conda `fiona`，Python 3.14.8，PyMuPDF 1.28.2，导入路径为本项目|
-|命令帮助与依赖|`conda run -n fiona python scripts/parse_pdf.py --help` 和 `conda run -n fiona python -m pip check` 通过|
-|单文件重跑|由上述 Python 子进程流程使用 `fiona` 解释器在临时目录执行，退出码 0；362 页检查及与正式输出逐字节一致性通过|
-|已有产物检查|读取当前配置及其 JSONL，核对文档 ID、连续物理页码、文本与页面状态是否一致；统计写入 README 的历史样例状态|
-|未验证项|未重跑全部旧 PDF，未测试新的时空论文，未执行 OCR、双栏/公式恢复或下游切块；未在本次重新人工核对原图|
-
-表中结果是本次记录；其余逐步命令供复现使用，不表示每个示例变体都已单独运行。
+2026-10-17 文档整理记录：示例已统一为待登记论文，未执行上述论文解析流程，未验证论文阅读顺序、公式、实验表格或下游切块。准备实际论文后，应记录文件版本、运行命令、页数、抽查位置和发现的问题，不预先填写成功结果。
 
 ## 9. 失败处理与重跑
 
@@ -238,7 +227,7 @@ PY
 - [ ] 能运行批处理并区分页面状态、文件失败和参数错误。
 - [ ] 能查看一页完整文字，并与原 PDF 核对阅读顺序及必要限定。
 - [ ] 知道默认重跑、全空结果及临时输出对文件的影响。
-- [ ] 对新论文重新检查双栏、公式和实验表格，不继承旧样例的质量结论。
+- [ ] 对所选论文检查双栏、公式和实验表格，记录实际质量结论。
 
 逐页解析完成后，下一模块将这些记录转换为可定位原文的证据块。新的论文种类与数量在[项目开发文档](../../项目开发文档.md#61-论文语料准备与来源登记)中规划，当前任务回到 [README](../../README.md#下一步重建论文语料再切块) 查看。切块规则、字段和验收查技术文档；本教程不宣称切块已经实现。
 

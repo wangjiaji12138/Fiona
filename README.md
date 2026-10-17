@@ -24,13 +24,12 @@
 |---|---|
 |工程与环境|已建立 Python 工程和 PDF 解析脚本；Conda `fiona` 环境可导入本项目与 PyMuPDF|
 |新的论文语料|已确定时空预测方向，覆盖交通、气象与图神经网络等方法；已重写分阶段选材建议，具体论文清单与新语料登记尚未完成|
-|既有解析样例|旧金融资料的 13 份 PDF 均有逐页 JSONL，共 2827 条页面记录、77 页无文字；作为历史解析回归样例保留，不计入新的论文知识库|
 |来源与样例|尚未建立新论文的 `data/source_manifest.jsonl` 与 `data/sample_questions.jsonl`|
 |后续模块|`data/chunks/` 尚无证据块；切块、索引、检索、生成与网页待实现|
 
-项目保留现有技术路线：PyMuPDF → 切块 → embedding + FAISS → 模型生成与引用 → FastAPI + Streamlit；结构增强、混合检索、重排训练和文献链仍按原路线推进，示例与困难负例改为论文场景。数据与论文证据约定见[项目开发文档](项目开发文档.md)。
+项目技术路线：PyMuPDF → 切块 → embedding + FAISS → 模型生成与引用 → FastAPI + Streamlit；结构增强、混合检索、重排训练和文献链围绕论文场景规划。数据与论文证据约定见[项目开发文档](项目开发文档.md)。
 
-旧文件与 `configs/pdf_files.json` 暂不删除或改名。新论文清单建立后，再明确配置中的处理范围；当前批处理默认仍会处理旧配置中的文件。
+论文清单从头建立。运行解析前，先核对配置中的文件是否属于本次选定语料；已有解析能力不代表论文语料准备完成。
 
 ## 已可用的命令
 
@@ -42,13 +41,13 @@ conda activate fiona
 python scripts/parse_pdf.py --help
 ```
 
-复现既有解析样例，并预览关键词所在页面（历史金融样例，仅验证解析能力）：
+准备好论文 PDF 与映射配置后，按 [PDF 解析教程](docs/development/02-PDF解析.md)运行。以下 `paper_example_v1` 是占位 ID，须先替换并登记：
 
 ```bash
-python scripts/parse_pdf.py --doc-id cmb_2024_annual --keyword 营业收入
+python scripts/parse_pdf.py --doc-id paper_example_v1 --keyword forecasting
 ```
 
-解析配置中的全部 PDF：
+确认配置中的全部 PDF 均属于本次处理范围后，可执行：
 
 ```bash
 python scripts/parse_pdf.py
@@ -61,7 +60,7 @@ python scripts/parse_pdf.py
 整条链路：**论文 PDF → 页面文字 → 证据块 → 检索 → 根据证据回答 → 查看原文。** 解析工具已具备，新领域的语料尚待准备。
 
 - [x] 明确主方向为时空预测，覆盖交通、气象与图神经网络等方法。
-- [ ] 按[项目开发文档第 6.1 节](项目开发文档.md#61-论文语料准备与来源登记)的分阶段建议确定具体论文清单；种类和数量从新方向重新规划，不继承金融资料规模。
+- [ ] 按[项目开发文档第 6.1 节](项目开发文档.md#61-论文语料准备与来源登记)的分阶段建议确定具体论文清单；种类和数量围绕研究目标从头规划。
 - [ ] 选择第一篇论文并登记来源、版本与本地路径，添加到 `configs/pdf_files.json`，用 `--doc-id` 单独解析。
 - [ ] 抽查问题定义、方法、实验表格等目标页，核对双栏阅读顺序、公式附近文字、表头、指标及原始页码；记录需要后续结构增强的位置。
 - [ ] 在 `src/fiona/chunking/` 实现切块，新增 `scripts/chunk_text.py` 入口；按[第 6.5 节](项目开发文档.md#65-首版切块约定待实现)保留章节、原文位置和实验条件。
