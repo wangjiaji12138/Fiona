@@ -2,7 +2,7 @@
 
 更新日期：2026-10-17。适用环境：Linux、Bash、Conda `fiona`。本教程整理已经实现的通用 PDF 解析能力；当前项目定位为 Fiona（曌），面向时空预测论文。整体进度与新的论文准备任务查 [README](../../README.md)。
 
-本教程使用 `paper_example_v1` 作为论文 ID 占位示例，不表示文件已经存在或通过验证。执行前需选定论文、保存 PDF 并登记映射；页数、关键词和目标页以实际论文为准。
+本教程使用 `paper_example_v1` 作为论文 ID 占位示例，不表示文件已经存在或通过验证。执行前需选定论文、保存 PDF 并通过[批量登记脚本](03-论文清单批量登记.md)登记映射；页数、关键词和目标页以实际论文为准。
 
 ## 1. 本次要完成什么
 
@@ -11,7 +11,7 @@
 |对象|本教程样例|
 |---|---|
 |输入映射|`configs/pdf_files.json` 中的 `paper_example_v1`|
-|原始 PDF|`data/raw/paper_example_v1.pdf`|
+|原始 PDF|`data/raw/registered/paper_example_v1.pdf`|
 |正式输出|`data/parsed/paper_example_v1.jsonl`|
 |完成标志|能逐行读取输出、核对页面数量与物理页序，并在原 PDF 找到对应文字|
 |能力范围|提取与基础清洗；暂不执行 OCR、结构恢复、切块、索引或回答|
@@ -41,7 +41,7 @@ python -m pip check
 
 成功标志：解释器位于 `fiona` 环境，项目路径指向本仓库的 `src/fiona/__init__.py`，PyMuPDF 可以导入，依赖检查没有冲突。本功能复用已声明的 PyMuPDF，无需新增依赖。
 
-先将选定论文保存为 `data/raw/paper_example_v1.pdf`，在 `configs/pdf_files.json` 中登记 `"paper_example_v1": "paper_example_v1.pdf"`（或统一替换为实际 ID 和文件名），再检查映射与输入文件：
+先将新论文放到 `data/raw/unregistered/`，运行 `python scripts/update_pdf_files.py` 登记并移入 `registered/`，然后将下方占位 ID `paper_example_v1` 替换为实际文件名去掉 `.pdf` 的完整部分。终端 `--doc-id` 参数中的完整标题必须加引号；Python 字符串保留原大小写。以下代码检查映射与输入文件：
 
 ```bash
 python - <<'PY'
@@ -57,7 +57,7 @@ assert pdf_path.is_file(), f"找不到文件：{pdf_path}"
 PY
 ```
 
-脚本不自动扫描 `data/raw/`。配置中没有登记的文件，不会因为放进目录就被处理。
+解析脚本不自动扫描 `data/raw/`。新文件先放入 `unregistered/`，由登记脚本加入配置并移入 `registered/`；配置中没有登记的文件不会被解析。
 
 ## 4. 文件与关键调用链
 
@@ -229,7 +229,7 @@ PYTHON
 - [ ] 知道默认重跑、全空结果及临时输出对文件的影响。
 - [ ] 对所选论文检查双栏、公式和实验表格，记录实际质量结论。
 
-逐页解析完成后，下一模块将这些记录转换为可定位原文的证据块。新的论文种类与数量在[项目开发文档](../../项目开发文档.md#61-论文语料准备与来源登记)中规划，当前任务回到 [README](../../README.md#下一步重建论文语料再切块) 查看。切块规则、字段和验收查技术文档；本教程不宣称切块已经实现。
+逐页解析完成后，下一模块将这些记录转换为可定位原文的证据块。新的论文种类与数量在[项目开发文档](../../项目开发文档.md#61-论文语料准备与来源登记)中规划，当前任务回到 [README](../../README.md#下一步结构解析再切块) 查看。切块规则、字段和验收查技术文档；本教程不宣称切块已经实现。
 
 ## 11. 参考
 
