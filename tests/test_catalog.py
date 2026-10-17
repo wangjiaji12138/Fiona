@@ -262,6 +262,27 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(record['raw_path'], 'papers/registered/Example.pdf')
         self.assertEqual(plan_catalog_update(custom_raw, self.config, manifest).pdf_count, 0)
 
+    def test_registration_removes_only_hyphen_adjacent_spaces(self):
+        source = self.pending / 'ESWA-2023-DAGCRN - Graph convolutional network.pdf'
+        source.write_bytes(b'new pdf')
+        plan = self.plan()
+        self.assertIn('ESWA-2023-DAGCRN-Graph convolutional network', plan.mapping)
+        apply_catalog_update(plan)
+        target = self.registered / 'ESWA-2023-DAGCRN-Graph convolutional network.pdf'
+        self.assertEqual(target.read_bytes(), b'new pdf')
+        record = json.loads(self.manifest.read_text())
+        self.assertEqual(record['doc_id'], target.stem)
+        self.assertEqual(record['title'], 'DAGCRN-Graph convolutional network')
+        self.assertFalse(source.exists())
+
+    def test_normalized_pending_collision_does_not_move_files(self):
+        for name in ('Paper - Title.pdf', 'Paper-Title.pdf'):
+            (self.pending / name).write_bytes(name.encode())
+        with self.assertRaisesRegex(ValueError, '冲突'):
+            self.plan()
+        self.assertEqual(len(list(self.pending.iterdir())), 2)
+        self.assertFalse(self.config.exists())
+
     def test_filename_fields_preserve_title_hyphens_and_unknowns(self):
         cases = {
             'KDD-2024-ST-Norm - A Spatial-Temporal Method':

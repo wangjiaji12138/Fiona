@@ -35,7 +35,7 @@ def main() -> int:
     print(f"{'计划更新' if args.dry_run else '已更新'}已有元数据：{result.metadata_updates} 条。")
     for source, target in result.moves:
         print(f"{'计划移动' if args.dry_run else '已移动'}：{source.name} -> {target}")
-    new_ids = {source.stem for source, _ in result.moves}
+    new_ids = {target.stem for _, target in result.moves}
     for record in result.records:
         if record['doc_id'] in new_ids:
             print(f"SHA-256：{record['doc_id']} {record['sha256']}")

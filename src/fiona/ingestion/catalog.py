@@ -75,6 +75,11 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def normalize_pdf_name(name: str) -> str:
+    """仅移除 ASCII 连字符两侧空白，保留标题中其他空格。"""
+    return re.sub(r'\s*-\s*', '-', name)
+
+
 def filename_metadata(doc_id: str) -> tuple[str, int | None, str | None]:
     """按 渠道-年份-标题 拆分，保留标题内连字符；Unknown 不变成事实。"""
     match = re.fullmatch(r'(.+?)-([12][0-9]{3}|Unknown)-(.+)', doc_id)
@@ -185,8 +190,8 @@ def plan_catalog_update(raw_dir: Path, config_path: Path,
         if source.suffix.lower() != ".pdf":
             skipped.append(relative.as_posix())
             continue
-        doc_id = source.stem
-        target = registered / relative
+        target = registered / relative.with_name(normalize_pdf_name(relative.name))
+        doc_id = target.stem
         filename = target.relative_to(raw_dir).as_posix()
         _validate_mapping({doc_id: filename})
         if doc_id.casefold() in ids or filename.casefold() in paths:
