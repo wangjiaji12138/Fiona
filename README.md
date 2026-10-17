@@ -4,7 +4,7 @@
 
 中文名“曌”采用本项目的命名意象：日月代表时间，空代表空间；保留英文名 Fiona，与时空数据的研究主题相呼应。
 
-**当前阶段：44 份论文 PDF 已完成命名与配置登记，批量登记脚本和逐页文字解析已可用。下一步先完善结构解析、核对图表与原文位置，再进行切块。检索、问答与网页尚未实现。**
+**当前阶段：44 份 PDF 已完成统一登记，路径配置与含 SHA-256 的来源清单已生成。登记支持从文件名拆分标题、年份和渠道，语言统一为英文；既有清单待运行元数据刷新。下一步完善结构解析，再进行切块。检索、问答与网页尚未实现。**
 
 ## 文档导航与职责
 
@@ -13,7 +13,7 @@
 |[README](README.md)|项目入口、当前进度、已可用命令、下一步任务、教程索引|完成验证、进度变化或新增可用入口时|
 |[项目开发文档](项目开发文档.md)|目标与版本范围、架构、模块边界、技术选择、数据结构、接口和验收约定|设计或技术约定变化时|
 |[AGENT.md](AGENT.md)|Agent 工作流程、实现与验证要求、文档交付规则|协作规则变化时；`AGENTS.md` 仅作读取入口|
-|[环境搭建教程](1.环境搭建.md)、`docs/development/` 下的专题教程|每个功能的详细开发流程、原理、命令、结果解释与排错|对应功能新增或行为变化时|
+|[环境搭建教程](docs/development/01-环境搭建.md)、`docs/development/` 下的专题教程|每个功能的详细开发流程、原理、命令、结果解释与排错|对应功能新增或行为变化时|
 |[功能开发文档模板](docs/templates/功能开发文档模板.md)|新教程必须包含的内容与写作提示|教程交付标准变化时|
 
 当前状态只在本文件维护；字段、参数与接口约定查项目开发文档；完整操作步骤查专题教程。教程中的验证记录保留当次日期和范围，不代替当前进度。文档与代码不符时先核对实现和实际产物，再修正文档；计划功能须保留待实现标记。
@@ -23,17 +23,17 @@
 |项目|实际情况|
 |---|---|
 |工程与环境|已建立 Python 工程和 PDF 解析脚本；Conda `fiona` 环境可导入本项目与 PyMuPDF|
-|论文文件与配置|44 份 PDF 已统一命名并登记；已迁入 `raw/registered/`；登记脚本只扫描 `raw/unregistered/`，成功后移动文件，保留待登记空目录；详见[批量登记教程](docs/development/03-论文清单批量登记.md)|
-|来源与样例|尚未建立新论文的 `data/source_manifest.jsonl` 与 `data/sample_questions.jsonl`|
+|论文文件与配置|44 份 PDF 已由用户完成登记，路径配置与来源清单均存在；文件名元数据规则已更新，可用 `--refresh-metadata` 刷新旧记录；详见[统一登记教程](docs/development/04-统一登记与来源清单.md)|
+|来源与样例|已生成 44 条来源记录；语言统一为 `en`，标题、年份和渠道可由规范文件名填充。作者、版本等等待 PDF 解析后补充，暂不要求来源网站；样例问题尚未建立|
 |后续模块|`data/chunks/` 尚无证据块；切块、索引、检索、生成与网页待实现|
 
 项目技术路线：PyMuPDF 基础解析 → 结构解析与核对 → 切块 → embedding + FAISS → 模型生成与引用 → FastAPI + Streamlit；结构增强、混合检索、重排训练和文献链围绕论文场景规划。数据与论文证据约定见[项目开发文档](项目开发文档.md)。
 
-文件清单已登记；来源元数据和解析质量仍需完善。将新 PDF 放入 `data/raw/unregistered/` 后运行批量登记脚本，不用逐条手写配置。
+本批已登记；作者、版本等元数据和解析质量后续完善。将新 PDF 放入 `data/raw/unregistered/` 后运行批量登记脚本，不用逐条手写配置。
 
 ## 已可用的命令
 
-在服务器项目根目录执行；首次安装与解释器检查见[环境搭建教程](1.环境搭建.md)。
+在服务器项目根目录执行；首次安装与解释器检查见[环境搭建教程](docs/development/01-环境搭建.md)。
 
 ```bash
 cd /data2/wangjiaji/Fiona
@@ -41,14 +41,23 @@ conda activate fiona
 python scripts/parse_pdf.py --help
 ```
 
-只扫描 `data/raw/unregistered/`（包含子目录），预览并登记后移入 `data/raw/registered/`：
+只扫描 `data/raw/unregistered/`（包含子目录），计算 SHA-256，登记后移入 `data/raw/registered/`，同步维护 `configs/pdf_files.json` 与 `data/source_manifest.jsonl`：
 
 ```bash
 python scripts/update_pdf_files.py --dry-run
 python scripts/update_pdf_files.py
 ```
 
-成功后 `unregistered/` 保留为空目录；非 PDF 或冲突文件不会被删除。脚本不重复扫描 `registered/`。
+预览也会读取 PDF 计算哈希，但不写入。成功后 `unregistered/` 保留为空目录；同内容重复或 ID/路径冲突会整批报错，非 PDF 保留。脚本不重复扫描 `registered/`。语言固定为 `en`，标题、年份和渠道从规范文件名拆分，其余信息等待 PDF 解析后补充；`raw_path` 相对于来源清单目录解析。详见[统一登记教程](docs/development/04-统一登记与来源清单.md)。
+
+已有清单可先预览并刷新元数据，无需移回 PDF 或删除配置：
+
+```bash
+python scripts/update_pdf_files.py --refresh-metadata --dry-run
+python scripts/update_pdf_files.py --refresh-metadata
+```
+
+该选项只在旧标题为空或仍等于 ID、年份/渠道为空时补齐，移除 `downloaded_at` 和 `notes`，保留已填写元数据。若同时存在新 PDF，仍按正常流程登记新文件。
 
 ID 与文件名去掉 `.pdf` 后完全一致。完整标题含空格时加引号，例如：
 
@@ -62,15 +71,17 @@ python scripts/parse_pdf.py --doc-id "NIPS-2017-Attention Is All You Need"
 python scripts/parse_pdf.py
 ```
 
-输入文件映射维护在 [configs/pdf_files.json](configs/pdf_files.json)，已登记输入位于 `data/raw/registered/`，映射值含 `registered/` 前缀；输出位于 `data/parsed/<doc_id>.jsonl`。成功重跑会替换同名解析输出。更多参数、退出码、逐页检查及排错见 [PDF 解析教程](docs/development/02-PDF解析.md)。
+输入文件映射维护在 `configs/pdf_files.json`（登记后生成），已登记输入位于 `data/raw/registered/`，映射值含 `registered/` 前缀；输出位于 `data/parsed/<doc_id>.jsonl`。成功重跑会替换同名解析输出。更多参数、退出码、逐页检查及排错见 [PDF 解析教程](docs/development/02-PDF解析.md)。
 
 ## 下一步：结构解析，再切块
 
 整条链路：**论文 PDF → 结构化解析与核对 → 证据块 → 检索 → 根据证据回答 → 查看原文。** 已有基础文字解析，结构解析尚待实现。
 
 - [x] 明确主方向为时空预测，覆盖交通、气象与图神经网络等方法。
-- [x] 完成当前 44 份论文文件命名、解析配置登记及批量追加脚本。
-- [ ] 补齐来源登记，选择少量代表论文实现并验证结构解析；已完成的 STAEformer 基础解析不代表结构质量达标。
+- [x] 完成当前 44 份论文文件命名及批量登记脚本。
+- [x] 由用户运行统一登记，生成路径配置与含 SHA-256 的来源清单。
+- [ ] 运行 `--refresh-metadata` 更新旧记录的语言、标题、年份和渠道。
+- [ ] 选择少量代表论文实现并验证结构解析，逐步补齐作者、版本等元数据；已完成的 STAEformer 基础解析不代表结构质量达标。
 - [ ] 抽查问题定义、方法、实验表格等目标页，核对双栏阅读顺序、公式附近文字、表头、指标及原始页码；记录需要后续结构增强的位置。
 - [ ] 在 `src/fiona/chunking/` 实现切块，新增 `scripts/chunk_text.py` 入口；按[第 6.5 节](项目开发文档.md#65-首版切块约定待实现)保留章节、原文位置和实验条件。
 - [ ] 用“方法解决什么问题”和“某个实验结果对应什么设置”等问题验收，人工核对后保存到 `data/sample_questions.jsonl`。
@@ -99,8 +110,9 @@ python scripts/parse_pdf.py
 
 |教程|内容|
 |---|---|
-|[1. 环境搭建](1.环境搭建.md)|Conda 环境、项目安装、解释器检查与依赖排错|
+|[1. 环境搭建](docs/development/01-环境搭建.md)|Conda 环境、项目安装、解释器检查与依赖排错|
 |[2. PDF 解析](docs/development/02-PDF解析.md)|逐页提取、文本规范化、JSONL 输出、原文核对、重跑和失败处理|
 |[3. 论文清单批量登记](docs/development/03-论文清单批量登记.md)|待登记扫描、移动归档、配置合并、失败回滚与验证|
+|[4. 统一登记与来源清单](docs/development/04-统一登记与来源清单.md)|SHA-256、内容查重、来源记录、双文件恢复、用户运行与验收|
 
 后续每个独立功能完成时新增专题教程，并在此处追加链接；对同一功能的修复同步更新原教程。
